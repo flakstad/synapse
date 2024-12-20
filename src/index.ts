@@ -3,7 +3,6 @@ import { Store } from './store'
 import { useStore } from './useStore'
 import { EventItem, DataEvent, EventItemHandler, EventPayload } from './types'
 import { useRouteEvents, RouteEvents } from './useRouteEvents'
-import { createSubscription, Subscription, SubscriptionStatus } from './createSubscription'
 import * as searchParamSync from './searchParamSync'
 import * as localStorageSync from './localStorageSync'
 import { createEventHandler, type EventHandler, type EventHandlers } from './createEventHandler'
@@ -89,11 +88,6 @@ export {
   // Route handling
   type RouteEvents,
   useRouteEvents,
-  
-  // Subscription handling
-  createSubscription,
-  type Subscription,
-  type SubscriptionStatus,
   
   // Storage sync utilities
   searchParamSync,

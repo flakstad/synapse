@@ -1,4 +1,3 @@
-// store.ts
 export class Store<T> {
   private state: T
   private listeners: (() => void)[] = []

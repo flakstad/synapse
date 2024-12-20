@@ -3,11 +3,36 @@ import {
   EventHandlers,
   createEventHandler,
   RouteEvents,
-  createSubscription,
-  Subscription,
   searchParamSync,
   localStorageSync
 } from '../src/index'
+
+// Define Subscription type
+interface Subscription<T> {
+  unsubscribe: () => void;
+}
+
+// Mock implementation of createSubscription
+function createSubscription<T>(
+  query: any,
+  onData: (data: T) => void,
+  onError: (error: any) => void
+): Subscription<T> {
+  // Simulate initial data fetch
+  setTimeout(() => {
+    onData([
+      { id: 1, name: 'Mock Item 1' },
+      { id: 2, name: 'Mock Item 2' },
+    ] as T);
+  }, 500);
+
+  // Return mock unsubscribe function
+  return {
+    unsubscribe: () => {
+      console.log('Unsubscribed from collection');
+    },
+  };
+}
 
 // Define the app state schema
 export interface AppState {
@@ -84,53 +109,56 @@ const eventHandlers: EventHandlers<AppState, MyEventTypeValues> = {
       })
   },
   subscribe_collection: (store, dataEvent) => {
-    const { collectionName, params } = dataEvent.payload
+    const { collection, params } = dataEvent.payload
     const { workspaceId } = params
     console.log('handling event', 'subscribe_collection', dataEvent.payload)
-    if (subscriptions[collectionName]) {
-      console.warn(`Already subscribed to ${collectionName}. Unsubscribe first.`)
+    if (subscriptions[collection]) {
+      console.warn(`Already subscribed to ${collection}. Unsubscribe first.`)
       return
     }
 
-    const queryFunction = queryMap[collectionName]
+    const queryFunction = queryMap[collection]
     if (!queryFunction) {
-      console.error(`No query function found for collection: ${collectionName}`)
+      console.error(`No query function found for collection: ${collection}`)
       return
     }
 
     const query = queryFunction(workspaceId)
 
-    subscriptions[collectionName] = createSubscription(
+    subscriptions[collection] = createSubscription(
       query,
       (data) => {
-        store.merge({ [collectionName]: data })
+        store.merge({ [collection]: data })
       },
       (error) => {
-        console.error(`Error in ${collectionName} subscription:`, error)
+        console.error(`Error in ${collection} subscription:`, error)
       },
     )
   },
   unsubscribe_collection: (store, dataEvent) => {
-    const { collectionName } = dataEvent.payload
+    const { collection } = dataEvent.payload
     console.log('handling event', 'unsubscribe_collection', dataEvent.payload)
-    if (subscriptions[collectionName]) {
-      subscriptions[collectionName].unsubscribe()
-      delete subscriptions[collectionName]
+    if (subscriptions[collection]) {
+      subscriptions[collection].unsubscribe()
+      delete subscriptions[collection]
     }
   },
 }
 
+const localStorageSyncedFields = ['assets']
+const searchParamsSyncedFields = ['search.q']
+
 // Create the Synapse instance
 const { dispatch, store, useStore, useRouteEvents } = synapse({
   initializers: [
-    () => initialState,                          // Base initial state
-    () => searchParamSync.load(),                // Load from URL
-    () => localStorageSync.load()                // Load from localStorage
+    () => initialState,                          
+    () => searchParamSync.load(searchParamsSyncedFields),                
+    () => localStorageSync.load(localStorageSyncedFields)
   ],
   eventHandler: createEventHandler(eventHandlers),
   listeners: [
-    (state) => searchParamSync.update(state),    // Sync changes to URL
-    (state) => localStorageSync.update(state)    // Sync changes to localStorage
+    (state) => searchParamSync.update(state, searchParamsSyncedFields),    
+    (state) => localStorageSync.update(state, localStorageSyncedFields)
   ]
 })
 
@@ -139,11 +167,11 @@ const routeEvents: RouteEvents<MyEventTypeValues> = {
   '/:workspaceId/search': {
     enter: [
       ['console_log', { text: 'Entered search!' }],
-      ['subscribe_collection', { collectionName: 'assets' }],
+      ['subscribe_collection', { collection: 'assets' }],
     ],
     leave: [
       ['console_log', 'Left search!'],
-      ['unsubscribe_collection', { collectionName: 'assets' }],
+      ['unsubscribe_collection', { collection: 'assets' }],
     ],
   },
 }

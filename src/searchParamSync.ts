@@ -1,26 +1,11 @@
-// searchParamSync.ts
 import { AppState } from '../examples/usage'
 import { getNestedValue, setNestedValue } from './utils'
 
-// Fields from data store to be synced with searchParams
-export const syncedFields = [
-  'search.q',
-  'fileId',
-  'fileModalOpen',
-  'evidenceModalOpen',
-  'autoPlay',
-  'timestampSeconds',
-  'selectedTab',
-  'insightId',
-  'selectedQuoteIdx',
-  'selectedDocumentId',
-]
-
 export type SearchParamSync = {
-  [K in (typeof syncedFields)[number]]: any
+  [K in string]: any
 }
 
-export function load(): Partial<AppState> {
+export function load(syncedFields: string[]): Partial<AppState> {
   const searchParams = new URLSearchParams(window.location.search)
   const initialState: Partial<AppState> = {}
 
@@ -34,7 +19,7 @@ export function load(): Partial<AppState> {
   return initialState
 }
 
-export function update(state: AppState) {
+export function update(state: AppState, syncedFields: string[]) {
   const searchParams = new URLSearchParams(window.location.search)
   syncedFields.forEach((field) => {
     const value = getNestedValue(state, field)

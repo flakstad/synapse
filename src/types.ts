@@ -1,4 +1,3 @@
-// types.ts
 export type EventPayload = any
 export type EventTuple<T extends string> = [T, EventPayload?]
 export type EventItem<T extends string> = T | EventTuple<T>

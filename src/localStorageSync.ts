@@ -1,15 +1,11 @@
-// localStorageSync.ts
 import { AppState } from '../examples/usage'
 import { getNestedValue, setNestedValue } from './utils'
 
-// Fields from data store to be synced with localStorage
-export const syncedFields = ['assets']
-
 export type LocalStorageSyncedState = {
-  [K in (typeof syncedFields)[number]]: any
+  [K in string]: any
 }
 
-export function load(): Partial<AppState> {
+export function load(syncedFields: string[]): Partial<AppState> {
   const initialState: Partial<AppState> = {}
 
   syncedFields.forEach((field) => {
@@ -19,7 +15,6 @@ export function load(): Partial<AppState> {
         const parsedValue = JSON.parse(value)
         setNestedValue(initialState, field, parsedValue)
       } catch (e) {
-        // eslint-disable-next-line no-console
         console.error(`Error parsing localStorage value for ${field}:`, e)
       }
     }
@@ -28,7 +23,7 @@ export function load(): Partial<AppState> {
   return initialState
 }
 
-export function update(state: AppState) {
+export function update(state: AppState, syncedFields: string[]) {
   syncedFields.forEach((field) => {
     const value = getNestedValue(state, field)
     if (value !== undefined && value !== null) {

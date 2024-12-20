@@ -1,4 +1,3 @@
-// useStore.ts
 import { useState, useEffect } from 'react'
 import { Store } from './store'
 
