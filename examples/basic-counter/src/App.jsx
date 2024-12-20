@@ -1,56 +1,75 @@
-import { useSynapse, createSignalProcessor, searchParamSync, localStorageSync } from '../../../src/index'
-import { useEffect } from 'react'
+import { synapse, createSignalProcessor, searchParamSync, localStorageSync } from '../../../src/index'
+import { useEffect, useState } from 'react'
+
+const defaultInitialState = {
+  count: 0,
+  theme: 'light',
+  currentPath: window.location.pathname
+}
+
+const { emit, synapseState } = synapse({
+  initializers: [
+    () => (defaultInitialState),
+    () => localStorageSync.load(['count', 'theme']),
+    () => searchParamSync.load(['count', 'theme']),      
+  ],
+  signalProcessor: createSignalProcessor({
+    INCREMENT: (state) => {
+      state.merge({ count: Number(state.get().count) + 1 })
+    },
+    DECREMENT: (state) => {
+      state.merge({ count: Number(state.get().count) - 1 })
+    },
+    TOGGLE_THEME: (state) => {
+      const currentTheme = state.get().theme
+      state.merge({ theme: currentTheme === 'light' ? 'dark' : 'light' })        
+    },
+    NAVIGATE: (state, { payload}) => {
+      const path = payload?.path || '/'
+      window.history.pushState(null, '', path)
+      state.merge({ currentPath: path })
+    },
+    CONSOLE_LOG: (state, { payload }, event) => {
+      console.log(payload, event)
+    },
+  }),
+  stateListeners: [
+    (state) => console.log('State updated:', state),
+    (state) => searchParamSync.update(state, ['count', 'theme']),
+    (state) => localStorageSync.update(state, ['count', 'theme']),       
+  ],
+  enableDevTools: true,
+  routeSignals: {
+    '/': {
+      enter: [['CONSOLE_LOG', { message: 'Entered home page' }]],
+      leave: [['CONSOLE_LOG', { message: 'Left home page' }]]
+    },
+    '/counter': {
+      enter: [['CONSOLE_LOG', { message: 'Entered counter page' }]],
+      leave: [['CONSOLE_LOG', { message: 'Left counter page' }]]
+    }
+  },
+  pathSelector: (state) => state.currentPath
+})
 
 export default function App() {
-  const { state, emit } = useSynapse({
-    initializers: [
-      () => ({
-        count: 0,
-        theme: 'light',
-        currentPath: window.location.pathname,
-      }),
-      // Load initial values from URL search params and localStorage
-      () => localStorageSync.load(['count', 'theme']),
-      () => searchParamSync.load(['count', 'theme']),      
-    ],
-    signalProcessor: createSignalProcessor({
-      INCREMENT: (state, signal) => {
-        state.merge({ count: Number(state.get().count) + 1 })
-      },
-      DECREMENT: (state) => {
-        state.merge({ count: Number(state.get().count) - 1 })
-      },
-      TOGGLE_THEME: (state) => {
-        const currentTheme = state.get().theme
-        state.merge({ theme: currentTheme === 'light' ? 'dark' : 'light' })        
-      },
-      NAVIGATE: (state, signal) => {
-        const path = signal.payload?.path || '/'
-        window.history.pushState(null, '', path)
-        state.merge({ currentPath: path })        
-      },
-      CONSOLE_LOG: (state, { payload }, event) => {
-        console.log(payload, event)
-      },
-    }),
-    stateListeners: [
-      (state) => console.log('State updated:', state),
-      // Sync state changes back to URL and localStorage
-      (state) => searchParamSync.update(state, ['count', 'theme']),
-      (state) => localStorageSync.update(state, ['count', 'theme']),       
-    ],
-    routeSignals: {
-      '/': {
-        enter: [['CONSOLE_LOG', { message: 'Entered home page' }]],
-        leave: [['CONSOLE_LOG', { message: 'Left home page' }]],
-      },
-      '/counter': {
-        enter: [['CONSOLE_LOG', { message: 'Entered counter page' }]],
-        leave: [['CONSOLE_LOG', { message: 'Left counter page' }]],
-      },
+  const [state, setState] = useState(synapseState.get())
+
+  useEffect(() => {
+    const handlePopState = () => {
+      emit(['NAVIGATE', { path: window.location.pathname }])
     }
-  })
-  
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  useEffect(() => {
+    const unsubscribe = synapseState.subscribe(() => {
+      setState(synapseState.get())
+    })    
+    return unsubscribe
+  }, [])
+
   const styles = {
     container: {
       padding: '2rem',
@@ -88,14 +107,6 @@ export default function App() {
       borderBottom: '2px solid currentColor',
     },
   }
-
-  useEffect(() => {
-    const handlePopState = () => {
-      emit([['NAVIGATE', { path: window.location.pathname }]])
-    }
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [emit])
 
   const renderContent = () => {
     switch (state.currentPath) {
@@ -136,7 +147,7 @@ export default function App() {
             ...styles.tab,
             ...(state.currentPath === '/' ? styles.activeTab : {}),
           }}
-          onClick={() => emit([['NAVIGATE', { path: '/' }]])}
+          onClick={() => emit(['NAVIGATE', { path: '/' }])}
         >
           Home
         </button>
@@ -145,7 +156,7 @@ export default function App() {
             ...styles.tab,
             ...(state.currentPath === '/counter' ? styles.activeTab : {}),
           }}
-          onClick={() => emit([['NAVIGATE', { path: '/counter' }]])}
+          onClick={() => emit(['NAVIGATE', { path: '/counter' }])}
         >
           Counter
         </button>

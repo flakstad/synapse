@@ -1,7 +1,7 @@
-export function enableSynapseDevTools(dispatch: any, state: any) {
+export function enableSynapseDevTools(emit: any, state: any) {
   if (typeof window !== 'undefined') {
     (window as any).Synapse = {
-      dispatch,
+      emit,
       state,
     }
   }

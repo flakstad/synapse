@@ -1,6 +1,5 @@
 import { SignalBus } from './signalBus'
 import { State } from './state'
-import { useSynapseState } from './useSynapseState'
 import { SignalItem, DataSignal, SignalProcessor, SignalPayload, SignalHandlers } from './types'
 import { useRouteSignals, RouteSignals } from './useRouteSignals'
 import * as searchParamSync from './searchParamSync'
@@ -15,6 +14,7 @@ type SynapseConfig<S, E extends string> = {
   stateListeners?: ((state: S) => void)[]
   enableDevTools?: boolean
   routeSignals?: RouteSignals<E>
+  pathSelector?: (state: S) => string
 }
 
 function synapse<S, E extends string>({
@@ -22,7 +22,8 @@ function synapse<S, E extends string>({
   signalProcessor,
   stateListeners = [],
   enableDevTools = true,
-  routeSignals
+  routeSignals,
+  pathSelector,
 }: SynapseConfig<S, E>) {
   const initialState = initializers.reduce(
     (state, initializer) => ({
@@ -34,6 +35,39 @@ function synapse<S, E extends string>({
 
   const synapseState = new State<S>(initialState)
   const signalBus = new SignalBus<E>()
+
+  // Handle route signals if provided
+  if (routeSignals) {
+    let currentPath = window.location.pathname
+    
+    // Move initial route handling to after state initialization
+    setTimeout(() => {
+      const initialRoute = routeSignals[currentPath]
+      if (initialRoute?.enter) {
+        signalBus.dispatch({ signals: initialRoute.enter })
+      }
+    }, 0)
+
+    // Subscribe to path changes in state
+    synapseState.subscribe(() => {
+      const newPath = pathSelector 
+        ? pathSelector(synapseState.get())
+        : window.location.pathname
+      if (newPath !== currentPath) {
+        const prevRoute = routeSignals[currentPath]
+        const nextRoute = routeSignals[newPath]
+
+        if (prevRoute?.leave) {
+          signalBus.dispatch({ signals: prevRoute.leave })
+        }
+        if (nextRoute?.enter) {
+          signalBus.dispatch({ signals: nextRoute.enter })
+        }
+        
+        currentPath = newPath
+      }
+    })
+  }
 
   signalBus.setHandler((signal: SignalItem<E>, event?: Event | React.SyntheticEvent) => {
     signalProcessor(synapseState, unpack(signal), event)
@@ -71,13 +105,11 @@ function useSynapse<S, E extends string>(config: SynapseConfig<S, E>) {
     synapseRef.current = synapse(config)
   }
   
-  const state = useSynapseState(synapseRef.current.synapseState)
-  
   if (config.routeSignals) {
     useRouteSignals(config.routeSignals, synapseRef.current.emit)
   }
   
-  return { state, emit: synapseRef.current.emit }
+  return { emit: synapseRef.current.emit }
 }
 
 function createSignalProcessor<S, T extends string>(
