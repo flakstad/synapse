@@ -1,14 +1,13 @@
-import { EventBus } from './eventBus'
+import { SignalBus } from './signalBus'
 import { State } from './state'
 import { useSynapseState } from './useSynapseState'
 import { SignalItem, DataSignal, SignalProcessor, SignalPayload, SignalHandlers } from './types'
 import { useRouteSignals, RouteSignals } from './useRouteSignals'
 import * as searchParamSync from './searchParamSync'
 import * as localStorageSync from './localStorageSync'
-import { enableStoreAndEventDevTools } from './devTools'
-import { unpackEvent } from './utils'
+import { enableSynapseDevTools } from './devTools'
+import { unpack } from './utils'
 import { useRef } from 'react'
-import { match } from 'path-to-regexp'
 
 type SynapseConfig<S, E extends string> = {
   initializers: ((state: Partial<S>) => Partial<S>)[]
@@ -34,10 +33,10 @@ function synapse<S, E extends string>({
   ) as S
 
   const synapseState = new State<S>(initialState)
-  const eventBus = new EventBus<E>()
+  const signalBus = new SignalBus<E>()
 
-  eventBus.setHandler((event: SignalItem<E>, originalEvent?: Event | React.SyntheticEvent) => {
-    signalProcessor(synapseState, unpackEvent(event), originalEvent)
+  signalBus.setHandler((signal: SignalItem<E>, event?: Event | React.SyntheticEvent) => {
+    signalProcessor(synapseState, unpack(signal), event)
   })
 
   listeners.forEach((listener) => {
@@ -51,11 +50,11 @@ function synapse<S, E extends string>({
     event?: Event | React.SyntheticEvent,
   ) => {
     const signalArray = Array.isArray(signals) ? signals : [signals]
-    eventBus.dispatch({ signals: signalArray, event: event })
+    signalBus.dispatch({ signals: signalArray, event: event })
   }
 
   if (enableDevTools) {
-    enableStoreAndEventDevTools(emit, synapseState)
+    enableSynapseDevTools(emit, synapseState)
   }
 
   return { synapseState, emit }

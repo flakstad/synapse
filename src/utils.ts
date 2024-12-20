@@ -13,11 +13,11 @@ export function setNestedValue(obj: any, path: string, value: any) {
   }
 }
 
-export function unpackEvent<E extends string>(event: SignalItem<E>): DataSignal<E> {
-  if (Array.isArray(event)) {
-    const [type, payload] = event
+export function unpack<E extends string>(signal: SignalItem<E>): DataSignal<E> {
+  if (Array.isArray(signal)) {
+    const [type, payload] = signal
     return { type, payload }
   } else {
-    return { type: event }
+    return { type: signal }
   }
 }

@@ -1,6 +1,6 @@
 import { SignalItem, SignalData } from './types'
 
-export class EventBus<E extends string> {
+export class SignalBus<E extends string> {
   private handler:
     | ((signal: SignalItem<E>, event?: Event | React.SyntheticEvent) => void)
     | null = null
