@@ -1,8 +1,5 @@
-import { SignalBus } from './signalBus'
 import { State } from './state'
 import { DataSignal, SignalItem, RouteSignals, SignalProcessor, SignalPayload, SignalHandlers, SignalTuple } from './types'
-import * as searchParamSync from './searchParamSync'
-import * as localStorageSync from './localStorageSync'
 import { enableSynapseDevTools } from './devTools'
 import { unpack } from './utils'
 import { match } from 'path-to-regexp'
@@ -36,14 +33,28 @@ function synapse<S, E extends string>({
     {} as Partial<S>
   ) as S
 
-  const state = new State<S>(initialState)
-  const signalBus = new SignalBus<E>()
+  const state = new State<S>(initialState)    
 
-  // Handle route signals if provided
+  const emit = (
+    signals: SignalItem<E>[] | SignalItem<E>,
+    event?: Event,
+  ) => {
+    const signalArray = Array.isArray(signals) && !Array.isArray(signals[0])
+      ? [signals as SignalItem<E>]
+      : Array.isArray(signals)
+        ? signals
+        : [signals]
+    signalArray.forEach(signal => signalProcessor(state, unpack(signal), event)
+    )
+  }
+
   if (routeSignals) {
     let currentPath = window.location.pathname
+    let isInitialLoad = true
+    let isHandlingRouteSignal = false
 
     const handleRouteSignals = (path: string, signalType: 'leave' | 'enter') => {
+      isHandlingRouteSignal = true
       for (const [routePath, config] of Object.entries(routeSignals)) {
         const matchFunction = match(routePath, { decode: decodeURIComponent })
         const result = matchFunction(path)
@@ -62,19 +73,21 @@ function synapse<S, E extends string>({
             }
           })
 
-          signalBus.dispatch({ signals })
+          emit(signals)
           break
         }
       }
+      isHandlingRouteSignal = false
     }
     
-    // Handle initial route
     setTimeout(() => {
       handleRouteSignals(currentPath, 'enter')
+      isInitialLoad = false
     }, 0)
 
-    // Subscribe to path changes in state
     state.subscribe(() => {
+      if (isInitialLoad || isHandlingRouteSignal) return
+      
       const newPath = pathSelector 
         ? pathSelector(state.get())
         : window.location.pathname
@@ -87,27 +100,11 @@ function synapse<S, E extends string>({
     })
   }
 
-  signalBus.setHandler((signal: SignalItem<E>, event?: Event) => {
-    signalProcessor(state, unpack(signal), event)
-  })
-
   stateListeners.forEach((listener) => {
     state.subscribe(() => {
       listener(state.get())
     })
   })
-
-  const emit = (
-    signals: SignalItem<E>[] | SignalItem<E>,
-    event?: Event,
-  ) => {
-    const signalArray = Array.isArray(signals) && !Array.isArray(signals[0])
-      ? [signals as SignalItem<E>]
-      : Array.isArray(signals)
-        ? signals
-        : [signals]
-    signalBus.dispatch({ signals: signalArray, event: event })
-  }
 
   if (enableDevTools) {
     enableSynapseDevTools(emit, state)
@@ -131,26 +128,96 @@ function createSignalProcessor<S, T extends string>(
   }
 }
 
+const createKey = (namespace: string, key: string) => `${namespace}.${key}`
+const parseKey = (fullKey: string) => {
+  const [namespace, ...rest] = fullKey.split('.')
+  return { namespace, key: rest.join('.') }
+}
+
+// Helper to check if a key is already in dot notation
+const isDotNotation = (key: string) => key.includes('.')
+
+// Helper to ensure dot notation
+const ensureDotNotation = (key: string | StorageConfig) => {
+  if (typeof key === 'string') {
+    return isDotNotation(key) ? key : `default.${key}`
+  }
+  return createKey(key.namespace, key.key)
+}
+
+type StorageKey = string | StorageConfig
+
+const searchParamSync = {
+  load: (keys: StorageKey[]) => {
+    const params = new URLSearchParams(window.location.search)
+    return keys.reduce((acc, key) => {
+      const fullKey = ensureDotNotation(key)
+      const value = params.get(fullKey.replace('.', '--'))
+      if (value !== null) {
+        acc[fullKey] = value
+      }
+      return acc
+    }, {} as Record<string, any>)
+  },
+  update: (state: any, keys: StorageKey[]) => {
+    const params = new URLSearchParams(window.location.search)
+    keys.forEach(key => {
+      const fullKey = ensureDotNotation(key)
+      const value = state[fullKey]
+      if (value !== undefined) {
+        params.set(fullKey.replace('.', '--'), String(value))
+      } else {
+        params.delete(fullKey.replace('.', '--'))
+      }
+    })
+    const newSearch = params.toString()
+    const newUrl = `${window.location.pathname}${newSearch ? '?' + newSearch : ''}`
+    window.history.replaceState(null, '', newUrl)
+  }
+}
+
+const localStorageSync = {
+  load: (keys: StorageKey[]) => {
+    return keys.reduce((acc, key) => {
+      const fullKey = ensureDotNotation(key)
+      const value = localStorage.getItem(fullKey.replace('.', '--'))
+      if (value !== null) {
+        try {
+          acc[fullKey] = JSON.parse(value)
+        } catch {
+          acc[fullKey] = value
+        }
+      }
+      return acc
+    }, {} as Record<string, any>)
+  },
+  update: (state: any, keys: StorageKey[]) => {
+    keys.forEach(key => {
+      const fullKey = ensureDotNotation(key)
+      const value = state[fullKey]
+      if (value !== undefined) {
+        localStorage.setItem(fullKey.replace('.', '--'), JSON.stringify(value))
+      } else {
+        localStorage.removeItem(fullKey.replace('.', '--'))
+      }
+    })
+  }
+}
+
+type StorageConfig = {
+  namespace: string
+  key: string
+}
+
 // Export everything through a single API
 export {
-  // Main synapse function and its types
   synapse,
   type SynapseConfig,
-
-  // Core types
   type State,
-
-  // Route handling
   type RouteSignals,
-
-  // Storage sync utilities
   searchParamSync,
   localStorageSync,
-
-  // Signal handling
   createSignalProcessor,
-
-  // Signal types
   type SignalItem,
   type DataSignal,
   type SignalProcessor,

@@ -1,12 +1,5 @@
-import { synapse, createSignalProcessor, searchParamSync, localStorageSync } from '../../../src/index'
-import { createSynapseHooks } from '../../../src/react'
 import { useEffect } from 'react'
-
-const defaultInitialState = {
-  count: 0,
-  theme: 'light',
-  currentPath: "/"
-}
+import { useSynapseState, useSignal, withSignalHandlers } from './synapse'
 
 const styles = {
   button: {
@@ -47,88 +40,19 @@ const getContainerStyles = (theme) => ({
   minHeight: '100vh',
 })
 
-const synapseInstance = synapse({
-  stateInitializers: [
-    () => (defaultInitialState),
-    () => localStorageSync.load(['count', 'theme']),
-    () => searchParamSync.load(['count', 'theme', 'currentPath']),      
-  ],
-  stateListeners: [
-    (state) => console.log('State updated:', state),
-    (state) => searchParamSync.update(state, ['count', 'theme', 'currentPath']),
-    (state) => localStorageSync.update(state, ['count', 'theme']),       
-  ],
-  signalProcessor: createSignalProcessor({
-    INCREMENT: (state) => {
-      state.merge({ count: Number(state.get().count) + 1 })
-    },
-    DECREMENT: (state) => {
-      state.swap(val => ({ ...val, count: Number(val.count) - 1 }))
-    },
-    TOGGLE_THEME: (state) => {
-      const currentTheme = state.get().theme
-      state.merge({ theme: currentTheme === 'light' ? 'dark' : 'light' })        
-    },
-    NAVIGATE: (state, { payload}) => {
-      const path = payload?.path || '/'
-      window.history.pushState(null, '', path)
-      state.merge({ currentPath: path })
-    },
-    CONSOLE_LOG: (state, { payload }, event) => {
-      console.log(payload, event)
-    },
-    CLEAR: (state) => {
-      state.reset(defaultInitialState)
-    },
-  }),  
-  enableDevTools: true,
-  routeSignals: {
-    '/': {
-      enter: [['CONSOLE_LOG', { message: 'Entered home page' }]],
-      leave: [['CONSOLE_LOG', { message: 'Left home page' }]]
-    },
-    '/counter': {
-      enter: [['CONSOLE_LOG', { message: 'Entered counter page' }]],
-      leave: [['CONSOLE_LOG', { message: 'Left counter page' }]]
-    }
-  },
-  pathSelector: (state) => state.currentPath
-})
-
-const { useSynapseState, useSignal } = createSynapseHooks(synapseInstance)
-
-// Create a signal handler HOC
-const withSignalHandlers = (WrappedComponent) => {
-  return function SignalHandler(props) {
-    const emit = useSignal()
-    
-    // Process all props that could be signals
-    const processedProps = Object.entries(props).reduce((acc, [key, value]) => {
-      if (key.startsWith('on') && (Array.isArray(value) || typeof value === 'string')) {
-        // Convert signal to handler function
-        acc[key] = (event) => emit(value, event)
-      } else {
-        acc[key] = value
-      }
-      return acc
-    }, {})
-
-    return <WrappedComponent {...processedProps} />
-  }
-}
-
-// Creating signal-aware versions of common elements..
+// Create signal-aware versions of common elements
 const Button = withSignalHandlers('button')
-const Link = withSignalHandlers('a')
 
 export default function App() {
-  const theme = useSynapseState(state => state.theme)
-  const currentPath = useSynapseState(state => state.currentPath)
-  const count = useSynapseState(state => state.count)
+  const theme = useSynapseState(state => state['theme.mode'])
+  const currentPath = useSynapseState(state => state['navigation.path'])
+  const count = useSynapseState(state => state['counter.value'])
+  const profileName = useSynapseState(state => state['profile.name'])
+  const profileLastActive = useSynapseState(state => state['profile.lastActive'])
 
   useEffect(() => {
     const handlePopState = () => {
-      useSignal()(['NAVIGATE', { path: window.location.pathname }])
+      useSignal()(['navigation.navigate', { path: window.location.pathname }])
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
@@ -142,6 +66,8 @@ export default function App() {
 
       {currentPath === '/counter' ? (
         <Counter count={count} />
+      ) : currentPath === '/profile' ? (
+        <Profile name={profileName} lastActive={profileLastActive} />
       ) : (
         <Home theme={theme} />
       )}
@@ -152,10 +78,10 @@ export default function App() {
 const Counter = ({ count }) => (
   <div>
     <h2>Count: {count}</h2>
-    <Button onClick="INCREMENT" style={styles.button}>
+    <Button onClick="counter.increment" style={styles.button}>
       Increment
     </Button>
-    <Button onClick="DECREMENT" style={styles.button}>
+    <Button onClick="counter.decrement" style={styles.button}>
       Decrement
     </Button>
   </div>
@@ -164,7 +90,7 @@ const Counter = ({ count }) => (
 const Navigation = ({ currentPath }) => (
   <div style={styles.tabs}>
     <Button
-      onClick={['NAVIGATE', { path: '/' }]}
+      onClick={['navigation.navigate', { path: '/' }]}
       style={{
         ...styles.tab,
         ...(currentPath === '/' ? styles.activeTab : {}),
@@ -173,13 +99,22 @@ const Navigation = ({ currentPath }) => (
       Home
     </Button>
     <Button
-      onClick={['NAVIGATE', { path: '/counter' }]}
+      onClick={['navigation.navigate', { path: '/counter' }]}
       style={{
         ...styles.tab,
         ...(currentPath === '/counter' ? styles.activeTab : {}),
       }}
     >
       Counter
+    </Button>
+    <Button
+      onClick={['navigation.navigate', { path: '/profile' }]}
+      style={{
+        ...styles.tab,
+        ...(currentPath === '/profile' ? styles.activeTab : {}),
+      }}
+    >
+      Profile
     </Button>
   </div>
 )
@@ -189,14 +124,28 @@ const Home = ({ theme }) => (
     <h2>Welcome to the Home Page</h2>
     <p>Navigate to the Counter page to see the counter in action!</p>
     <div style={{ marginTop: '2rem' }}>
-      <Button onClick="TOGGLE_THEME" style={styles.button}>
+      <Button onClick="theme.toggle" style={styles.button}>
         Toggle Theme ({theme})
       </Button>
     </div> 
     <div style={{ marginTop: '2rem' }}>
-      <Button onClick="CLEAR" style={styles.button}>
+      <Button onClick="system.reset" style={styles.button}>
         Reset
       </Button>
     </div> 
+  </div>
+)
+
+const Profile = ({ name, lastActive }) => (
+  <div>
+    <h2>Profile Page</h2>
+    {name ? (
+      <div>
+        <p>Name: {name}</p>
+        <p>Last Active: {new Date(lastActive).toLocaleString()}</p>
+      </div>
+    ) : (
+      <p>Loading user data...</p>
+    )}
   </div>
 )
