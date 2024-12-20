@@ -49,7 +49,11 @@ function synapse<S, E extends string>({
     signals: SignalItem<E>[] | SignalItem<E>,
     event?: Event | React.SyntheticEvent,
   ) => {
-    const signalArray = Array.isArray(signals) ? signals : [signals]
+    const signalArray = Array.isArray(signals) && !Array.isArray(signals[0])
+      ? [signals as SignalItem<E>]
+      : Array.isArray(signals)
+        ? signals
+        : [signals]
     signalBus.dispatch({ signals: signalArray, event: event })
   }
 
