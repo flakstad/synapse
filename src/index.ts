@@ -3,11 +3,13 @@ import { EventBus } from './eventBus'
 import { Store } from './store'
 import { useStore } from './useStore'
 import { EventItem, DataEvent, EventItemHandler, EventPayload } from './types'
-import { useRouteEvents } from './useRouteEvents'
-import { load as loadSearchParamsState } from './searchParamSync'
-import { load as loadLocalStorageState } from './localStorageSync'
+import { useRouteEvents, RouteEvents } from './useRouteEvents'
+import { createSubscription, Subscription, SubscriptionStatus } from './createSubscription'
+import * as searchParamSync from './searchParamSync'
+import * as localStorageSync from './localStorageSync'
+import { createEventHandler, type EventHandler, type EventHandlers } from './createEventHandler'
 
-export type SynapseConfig<S, E extends string> = {
+type SynapseConfig<S, E extends string> = {
   initialState: S
   eventHandler: EventItemHandler<E, Store<S>>
   listeners?: ((state: S) => void)[]
@@ -22,13 +24,13 @@ function unpackEvent<E extends string>(event: EventItem<E>): DataEvent<E> {
   }
 }
 
-export function synapse<S, E extends string>({
+function synapse<S, E extends string>({
   initialState,
   eventHandler,
   listeners = [],
 }: SynapseConfig<S, E>) {
-  const urlState = loadSearchParamsState()
-  const localStorageState = loadLocalStorageState()
+  const urlState = searchParamSync.load()
+  const localStorageState = localStorageSync.load()
   const mergedInitialState = { ...initialState, ...localStorageState, ...urlState } as S
 
   const store = new Store<S>(mergedInitialState)
@@ -62,7 +64,37 @@ export function synapse<S, E extends string>({
   }
 }
 
-export type { EventItem, DataEvent, Store, EventPayload }
+// Export everything through a single API
+export {
+  // Main synapse function and its types
+  synapse,
+  type SynapseConfig,
+  
+  // Core types
+  type Store,
+  type EventItem,
+  type DataEvent,
+  type EventItemHandler,
+  type EventPayload,
+  
+  // Route handling
+  type RouteEvents,
+  useRouteEvents,
+  
+  // Subscription handling
+  createSubscription,
+  type Subscription,
+  type SubscriptionStatus,
+  
+  // Storage sync utilities
+  searchParamSync,
+  localStorageSync,
+  
+  // Event handling
+  createEventHandler,
+  type EventHandler,
+  type EventHandlers,
+}
 
 // TODO: event handler should take actions and call an actions handler that computes the store updates and side effects. The event handler then updates the store and performs effects.
 // TODO: storage layer should have sync to localStorage/indexedDB. Define keys which should be persisted.

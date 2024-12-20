@@ -1,30 +1,26 @@
-/* eslint-disable no-console */
-// usage.ts
-import { System } from '../types'
-import { synapse, Store, DataEvent } from './synapse'
-import { search as searchQuery } from './../queries'
-import { RouteEvents } from './useRouteEvents'
-import { Query } from 'firebase/firestore'
-import * as firestoreQueries from '../firestore'
-import { createSubscription, Subscription } from './createSubscription'
-import { update as updateSearchParams } from './searchParamSync'
-import { update as updateLocalStorage } from './localStorageSync'
+import { 
+  synapse,
+  EventHandlers,
+  createEventHandler,
+  RouteEvents,
+  createSubscription,
+  Subscription,
+  searchParamSync,
+  localStorageSync
+} from '../src/index'
 
 // Define the app state schema
 export interface AppState {
-  workspaceId: string
   search: {
     q: string
-    a?: System.SearchResult
+    a?: any
     loading: boolean
     error?: any
   }
-  assets?: System.Asset[]
 }
 
 // Define initial state
 const initialState: AppState = {
-  workspaceId: '',
   search: { q: '', loading: false },
 }
 
@@ -42,27 +38,29 @@ const EventType = {
 
 type MyEventTypeValues = (typeof EventType)[keyof typeof EventType]
 
-// Define a type for the event handler function
-type EventHandler<T extends MyEventTypeValues> = (
-  store: Store<AppState>,
-  dataEvent: DataEvent<T>,
-  originalEvent?: Event | React.SyntheticEvent,
-) => void
-
-type EventHandlers = {
-  [K in MyEventTypeValues]: EventHandler<K>
-}
-
 const subscriptions: { [key: string]: Subscription<any> } = {}
 
 // mapping subscribe_collection collectionNames to firestore query implementations
-const queryMap: { [key: string]: (workspaceId: string) => Query<any> } = {
-  assets: firestoreQueries.assetsQuery,
-  documents: firestoreQueries.documentsQuery,
-  // TODO: add other collection queries..
+const queryMap: { [key: string]: (workspaceId: string) => any } = {
+  assets: () => 1,
+  documents: () => 2
+  // ..other collection queries..
 }
 
-const eventHandlers: EventHandlers = {
+const searchQuery = (q: string): Promise<any> => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        results: [
+          { id: 1, title: `Mock result 1 for "${q}"` },
+          { id: 2, title: `Mock result 2 for "${q}"` }
+        ]
+      });
+    }, 500); // Simulate network delay
+  });
+};
+
+const eventHandlers: EventHandlers<AppState, MyEventTypeValues> = {
   prevent_default: (store, dataEvent, originalEvent) => originalEvent?.preventDefault(),
   stop_propagation: (store, dataEvent, originalEvent) => originalEvent?.stopPropagation(),
   console_log: (store, dataEvent) => console.log(dataEvent.payload),
@@ -75,9 +73,9 @@ const eventHandlers: EventHandlers = {
     store.merge(dataEvent.payload || {})
   },
   search: (store, dataEvent) => {
-    const { workspaceId, q } = dataEvent.payload || {}
+    const { q } = dataEvent.payload || {}
     store.merge({ search: { q, a: undefined, loading: true } })
-    searchQuery(workspaceId, q)
+    searchQuery(q)
       .then((json) => {
         store.merge({ search: { q, a: json, loading: false } })
       })
@@ -122,29 +120,14 @@ const eventHandlers: EventHandlers = {
   },
 }
 
-function createEventHandler<T extends MyEventTypeValues>(
-  handlers: EventHandlers,
-): (
-  store: Store<AppState>,
-  event: DataEvent<T>,
-  originalEvent?: Event | React.SyntheticEvent,
-) => void {
-  return (store, event, originalEvent) => {
-    const handler = handlers[event.type] as EventHandler<T>
-    handler(store, event, originalEvent)
-  }
-}
-
-// Create the Synapse instance, from an initial app state, an event handler and data store listeners.
-// Returns
-//   dispatch - send events
-//   store - access the data store
-//   useStore - hook for the data store, returns updated store on every change
-//   useRouteEvents - hook to register events to dispatch on specific routes
+// Create the Synapse instance
 const { dispatch, store, useStore, useRouteEvents } = synapse({
   initialState,
-  eventHandler: createEventHandler<MyEventTypeValues>(eventHandlers),
-  listeners: [(state) => updateSearchParams(state), (state) => updateLocalStorage(state)],
+  eventHandler: createEventHandler<AppState, MyEventTypeValues>(eventHandlers),
+  listeners: [
+    (state) => searchParamSync.update(state),
+    (state) => localStorageSync.update(state)
+  ],
 })
 
 // Defining route events  - events that will be dispatched on routes

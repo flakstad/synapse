@@ -1,5 +1,5 @@
 // localStorageSync.ts
-import { AppState } from './usage'
+import { AppState } from '../examples/usage'
 import { getNestedValue, setNestedValue } from './utils'
 
 // Fields from data store to be synced with localStorage
