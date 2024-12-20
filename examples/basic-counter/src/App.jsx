@@ -1,5 +1,6 @@
 import { synapse, createSignalProcessor, searchParamSync, localStorageSync } from '../../../src/index'
-import { useEffect, useState } from 'react'
+import { createSynapseHooks } from '../../../src/react'
+import { useEffect } from 'react'
 
 const defaultInitialState = {
   count: 0,
@@ -7,7 +8,46 @@ const defaultInitialState = {
   currentPath: "/"
 }
 
-const { emit, state: synapseState } = synapse({
+const styles = {
+  button: {
+    margin: '0.5rem',
+    padding: '0.5rem 1rem',
+    fontSize: '1rem',
+    cursor: 'pointer'
+  },
+  input: {
+    margin: '1rem',
+    padding: '0.5rem',
+    fontSize: '1rem'
+  },
+  tabs: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '1rem',
+    marginBottom: '2rem',
+  },
+  tab: {
+    padding: '0.5rem 1rem',
+    cursor: 'pointer',
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    color: 'inherit',
+  },
+  activeTab: {
+    borderBottom: '2px solid currentColor',
+  },
+}
+
+const getContainerStyles = (theme) => ({
+  padding: '2rem',
+  textAlign: 'center',
+  backgroundColor: theme === 'light' ? '#ffffff' : '#333333',
+  color: theme === 'light' ? '#333333' : '#ffffff',
+  minHeight: '100vh',
+})
+
+const synapseInstance = synapse({
   stateInitializers: [
     () => (defaultInitialState),
     () => localStorageSync.load(['count', 'theme']),
@@ -55,123 +95,108 @@ const { emit, state: synapseState } = synapse({
   pathSelector: (state) => state.currentPath
 })
 
+const { useSynapseState, useSignal } = createSynapseHooks(synapseInstance)
+
+// Create a signal handler HOC
+const withSignalHandlers = (WrappedComponent) => {
+  return function SignalHandler(props) {
+    const emit = useSignal()
+    
+    // Process all props that could be signals
+    const processedProps = Object.entries(props).reduce((acc, [key, value]) => {
+      if (key.startsWith('on') && (Array.isArray(value) || typeof value === 'string')) {
+        // Convert signal to handler function
+        acc[key] = (event) => emit(value, event)
+      } else {
+        acc[key] = value
+      }
+      return acc
+    }, {})
+
+    return <WrappedComponent {...processedProps} />
+  }
+}
+
+// Creating signal-aware versions of common elements..
+const Button = withSignalHandlers('button')
+const Link = withSignalHandlers('a')
+
 export default function App() {
-  const [state, setState] = useState(synapseState.get())
+  const theme = useSynapseState(state => state.theme)
+  const currentPath = useSynapseState(state => state.currentPath)
+  const count = useSynapseState(state => state.count)
 
   useEffect(() => {
     const handlePopState = () => {
-      emit(['NAVIGATE', { path: window.location.pathname }])
+      useSignal()(['NAVIGATE', { path: window.location.pathname }])
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [])
-
-  useEffect(() => {
-    const unsubscribe = synapseState.subscribe(() => {
-      setState(synapseState.get())
-    })    
-    return unsubscribe
-  }, [])
-
-  const styles = {
-    container: {
-      padding: '2rem',
-      textAlign: 'center',
-      backgroundColor: state.theme === 'light' ? '#ffffff' : '#333333',
-      color: state.theme === 'light' ? '#333333' : '#ffffff',
-      minHeight: '100vh',
-    },
-    button: {
-      margin: '0.5rem',
-      padding: '0.5rem 1rem',
-      fontSize: '1rem',
-      cursor: 'pointer'
-    },
-    input: {
-      margin: '1rem',
-      padding: '0.5rem',
-      fontSize: '1rem'
-    },
-    tabs: {
-      display: 'flex',
-      justifyContent: 'center',
-      gap: '1rem',
-      marginBottom: '2rem',
-    },
-    tab: {
-      padding: '0.5rem 1rem',
-      cursor: 'pointer',
-      backgroundColor: 'transparent',
-      border: 'none',
-      borderBottom: '2px solid transparent',
-      color: 'inherit',
-    },
-    activeTab: {
-      borderBottom: '2px solid currentColor',
-    },
-  }
-
-  const renderContent = () => {
-    switch (state.currentPath) {
-      case '/counter':
-        return (
-          <div>
-            <h2>Count: {state.count}</h2>
-            <button style={styles.button} onClick={() => emit('INCREMENT')}>
-              Increment
-            </button>
-            <button style={styles.button} onClick={() => emit('DECREMENT')}>
-              Decrement
-            </button>
-          </div>
-        )
-      default:
-        return (
-          <div>
-            <h2>Welcome to the Home Page</h2>
-            <p>Navigate to the Counter page to see the counter in action!</p>
-            <div style={{ marginTop: '2rem' }}>
-              <button style={styles.button} onClick={() => emit('TOGGLE_THEME')}>
-                Toggle Theme ({state.theme})
-              </button>
-            </div> 
-            <div style={{ marginTop: '2rem' }}>
-              <button style={styles.button} onClick={() => emit('CLEAR')}>
-                Reset
-              </button>
-            </div> 
-          </div>
-        )
-    }
-  }
+  }, [useSignal])
 
   return (
-    <div style={styles.container}>
+    <div style={getContainerStyles(theme)}>
       <h1>Synapse Counter Example</h1>
       
-      <div style={styles.tabs}>
-        <button
-          style={{
-            ...styles.tab,
-            ...(state.currentPath === '/' ? styles.activeTab : {}),
-          }}
-          onClick={() => emit(['NAVIGATE', { path: '/' }])}
-        >
-          Home
-        </button>
-        <button
-          style={{
-            ...styles.tab,
-            ...(state.currentPath === '/counter' ? styles.activeTab : {}),
-          }}
-          onClick={() => emit(['NAVIGATE', { path: '/counter' }])}
-        >
-          Counter
-        </button>
-      </div>
+      <Navigation currentPath={currentPath} />
 
-      {renderContent()}
-           
+      {currentPath === '/counter' ? (
+        <Counter count={count} />
+      ) : (
+        <Home theme={theme} />
+      )}
     </div>
   )
 }
+
+const Counter = ({ count }) => (
+  <div>
+    <h2>Count: {count}</h2>
+    <Button onClick="INCREMENT" style={styles.button}>
+      Increment
+    </Button>
+    <Button onClick="DECREMENT" style={styles.button}>
+      Decrement
+    </Button>
+  </div>
+)
+
+const Navigation = ({ currentPath }) => (
+  <div style={styles.tabs}>
+    <Button
+      onClick={['NAVIGATE', { path: '/' }]}
+      style={{
+        ...styles.tab,
+        ...(currentPath === '/' ? styles.activeTab : {}),
+      }}
+    >
+      Home
+    </Button>
+    <Button
+      onClick={['NAVIGATE', { path: '/counter' }]}
+      style={{
+        ...styles.tab,
+        ...(currentPath === '/counter' ? styles.activeTab : {}),
+      }}
+    >
+      Counter
+    </Button>
+  </div>
+)
+
+const Home = ({ theme }) => (
+  <div>
+    <h2>Welcome to the Home Page</h2>
+    <p>Navigate to the Counter page to see the counter in action!</p>
+    <div style={{ marginTop: '2rem' }}>
+      <Button onClick="TOGGLE_THEME" style={styles.button}>
+        Toggle Theme ({theme})
+      </Button>
+    </div> 
+    <div style={{ marginTop: '2rem' }}>
+      <Button onClick="CLEAR" style={styles.button}>
+        Reset
+      </Button>
+    </div> 
+  </div>
+)

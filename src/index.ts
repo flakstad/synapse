@@ -14,6 +14,9 @@ type SynapseConfig<S, E extends string> = {
   enableDevTools?: boolean
   routeSignals?: RouteSignals<E>
   pathSelector?: (state: S) => string
+  selectors?: {
+    [K: string]: (state: S) => any
+  }
 }
 
 function synapse<S, E extends string>({
@@ -23,6 +26,7 @@ function synapse<S, E extends string>({
   enableDevTools = true,
   routeSignals,
   pathSelector,
+  selectors = {},
 }: SynapseConfig<S, E>) {
   const initialState = stateInitializers.reduce(
     (state, initializer) => ({
@@ -109,7 +113,13 @@ function synapse<S, E extends string>({
     enableSynapseDevTools(emit, state)
   }
 
-  return { state, emit }
+  const select = <T>(selectorKey: string) => {
+    const selector = selectors[selectorKey]
+    if (!selector) throw new Error(`Selector ${selectorKey} not found`)
+    return selector(state.get())
+  }
+
+  return { state, emit, select }
 }
 
 function createSignalProcessor<S, T extends string>(
