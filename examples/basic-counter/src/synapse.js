@@ -27,7 +27,7 @@ export const synapseInstance = synapse({
     () => searchParamSync.load(['counter.value', 'nav.path']),      
   ],
   stateListeners: [
-    (state) => console.log('State updated:', state),
+    //(state) => console.log('State updated:', state),
     (state) => localStorageSync.update(state, ['counter.value', 'theme.mode', 'profile.name', 'profile.lastActive']),       
     (state) => searchParamSync.update(state, ['counter.value', 'nav.path']),
   ],
@@ -36,7 +36,7 @@ export const synapseInstance = synapse({
       state.merge({ 'counter.value': Number(state.get()['counter.value']) + 1 })
     },
     'counter.decrement': (state) => {
-      state.swap(val => ({ ...val, 'counter.value': Number(val['counter.value']) - 1 }))
+      state.merge({ 'counter.value': Number(state.get()['counter.value']) - 1 })
     },
     'theme.toggle': (state) => {
       const currentTheme = state.get()['theme.mode']

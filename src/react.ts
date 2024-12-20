@@ -1,5 +1,5 @@
 /** @jsx React.createElement */
-import { useEffect, useState, ComponentType, createElement } from 'react'
+import { useEffect, useState, ComponentType, createElement, useRef } from 'react'
 import type { State } from './state'
 import type { SignalItem, SignalTuple } from './types'
 
@@ -36,18 +36,58 @@ export function createSynapseHooks<S, E extends string>(synapse: {
     }
   }
 
+  const isEqual = (a: any, b: any): boolean => {
+    if (a === b) return true;
+    if (typeof a !== 'object' || typeof b !== 'object') return false;
+    const keys = Object.keys(a);
+    if (keys.length !== Object.keys(b).length) return false;
+    return keys.every(key => isEqual(a[key], b[key]));
+  }
+
   return {
     useSignal: () => synapse.emit,
     useSynapseState: <T>(selector?: (state: S) => T) => {
       const [value, setValue] = useState(() => 
         selector ? selector(synapse.state.get()) : synapse.state.get()
       )
+      
+      const previousValueRef = useRef(value);
+      const memoizedSelector = useRef(selector);
+      
+      const selectorPath = useRef<string | null>(null);
+      
+      useEffect(() => {
+        if (memoizedSelector.current) {
+          const selectorStr = memoizedSelector.current.toString();
+          const match = selectorStr.match(/state\[['"]([^'"]+)['"]\]/);
+          if (match) {
+            selectorPath.current = match[1];
+          }
+        }
+      }, []);
 
       useEffect(() => {
-        return synapse.state.subscribe(() => {
-          setValue(selector ? selector(synapse.state.get()) : synapse.state.get())
+        return synapse.state.subscribe((changedPaths = []) => {
+          if (selectorPath.current && changedPaths.length > 0 && 
+              !changedPaths.includes(selectorPath.current)) {
+            return;
+          }
+
+          const nextState = synapse.state.get();
+          const nextValue = memoizedSelector.current 
+            ? memoizedSelector.current(nextState) 
+            : nextState;
+          
+          const hasChanged = typeof nextValue === 'object' && nextValue !== null
+            ? !isEqual(previousValueRef.current, nextValue)
+            : previousValueRef.current !== nextValue;
+
+          if (hasChanged) {
+            previousValueRef.current = nextValue;
+            setValue(nextValue);
+          }
         })
-      }, [selector])
+      }, [])
 
       return value
     },

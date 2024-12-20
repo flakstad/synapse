@@ -1,6 +1,6 @@
 export class State<T> {
   private state: T
-  private listeners: (() => void)[] = []
+  private listeners: ((changedPaths?: string[]) => void)[] = []
 
   constructor(initialState: T) {
     this.state = initialState
@@ -10,32 +10,25 @@ export class State<T> {
     return this.state
   }  
 
-  subscribe(listener: () => void) {
+  subscribe(listener: (changedPaths?: string[]) => void) {
     this.listeners.push(listener)
     return () => {
       this.listeners = this.listeners.filter((l) => l !== listener)
     }
   }
 
-  private notifyListeners() {
-    this.listeners.forEach((listener) => listener())
+  private notifyListeners(changedPaths?: string[]) {
+    this.listeners.forEach((listener) => listener(changedPaths))
   }
 
   merge(newState: Partial<T>) {
     this.state = { ...this.state, ...newState }
-    this.notifyListeners()
+    const changedPaths = Object.keys(newState)
+    this.notifyListeners(changedPaths)
   }
 
   reset(newState: T) {
     this.state = newState
-    this.notifyListeners()
-  }
-
-  swap<Args extends any[]>(
-    fn: (currentValue: T, ...args: Args) => T,
-    ...args: Args
-  ) {
-    this.state = fn(this.state, ...args)
     this.notifyListeners()
   }
 }

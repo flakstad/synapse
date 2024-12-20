@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { useSynapseState, useSignal, withSignalHandlers } from './synapse'
 
 const styles = {
@@ -43,8 +43,18 @@ const getContainerStyles = (theme) => ({
 // Create signal-aware versions of common elements
 const Button = withSignalHandlers('button')
 
-export default function App() {
+// Split the container into its own component
+const Container = ({ children }) => {
   const theme = useSynapseState(state => state['theme.mode'])
+  console.log('Container rendered')
+  return (
+    <div style={getContainerStyles(theme)}>
+      {children}
+    </div>
+  )
+}
+
+export default function App() {
   const currentPath = useSynapseState(state => state['nav.path'])
   const count = useSynapseState(state => state['counter.value'])
   const profileName = useSynapseState(state => state['profile.name'])
@@ -58,34 +68,38 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [useSignal])
 
+  console.log('App rendered')
   return (
-    <div style={getContainerStyles(theme)}>
+    <Container>
       <h1>Synapse Counter Example</h1>
       
       <Navigation currentPath={currentPath} />
 
-      {currentPath === '/counter' ? (
+      {currentPath === '/counter' ? (        
         <Counter count={count} />
       ) : currentPath === '/profile' ? (
         <Profile name={profileName} lastActive={profileLastActive} />
       ) : (
-        <Home theme={theme} />
+        <Home />
       )}
-    </div>
+    </Container>
   )
 }
 
-const Counter = ({ count }) => (
-  <div>
-    <h2>Count: {count}</h2>
-    <Button onClick="counter.increment" style={styles.button}>
-      Increment
-    </Button>
-    <Button onClick="counter.decrement" style={styles.button}>
-      Decrement
-    </Button>
-  </div>
-)
+const Counter = ({ count }) => {
+  console.log('Counter rendered');
+  return (
+    <div>
+      <h2>Count: {count}</h2>
+      <Button onClick="counter.increment" style={styles.button}>
+        Increment
+      </Button>
+      <Button onClick="counter.decrement" style={styles.button}>
+        Decrement
+      </Button>
+    </div>
+  )
+}
 
 const Navigation = ({ currentPath }) => (
   <div style={styles.tabs}>
@@ -119,33 +133,48 @@ const Navigation = ({ currentPath }) => (
   </div>
 )
 
-const Home = ({ theme }) => (
-  <div>
-    <h2>Welcome to the Home Page</h2>
-    <p>Navigate to the Counter page to see the counter in action!</p>
+// Separate the theme-dependent part of Home into its own component
+const ThemeToggle = () => {
+  const theme = useSynapseState(state => state['theme.mode'])
+  console.log('ThemeToggle rendered')
+  return (
     <div style={{ marginTop: '2rem' }}>
       <Button onClick="theme.toggle" style={styles.button}>
         Toggle Theme ({theme})
       </Button>
-    </div> 
-    <div style={{ marginTop: '2rem' }}>
-      <Button onClick="state.reset" style={styles.button}>
-        Reset
-      </Button>
-    </div> 
-  </div>
-)
+    </div>
+  )
+}
 
-const Profile = ({ name, lastActive }) => (
-  <div>
-    <h2>Profile Page</h2>
-    {name ? (
-      <div>
-        <p>Name: {name}</p>
-        <p>Last Active: {new Date(lastActive).toLocaleString()}</p>
-      </div>
-    ) : (
-      <p>Loading user data...</p>
-    )}
-  </div>
-)
+const Home = () => {
+  console.log('Home rendered')
+  return (
+    <div>
+      <h2>Welcome to the Home Page</h2>
+      <p>Navigate to the Counter page to see the counter in action!</p>
+      <ThemeToggle />
+      <div style={{ marginTop: '2rem' }}>
+        <Button onClick="state.reset" style={styles.button}>
+          Reset
+        </Button>
+      </div> 
+    </div>
+  )
+}
+
+const Profile = ({ name, lastActive }) => {
+  console.log('Profile rendered');
+  return (
+    <div>
+      <h2>Profile Page</h2>
+      {name ? (
+        <div>
+          <p>Name: {name}</p>
+          <p>Last Active: {new Date(lastActive).toLocaleString()}</p>
+        </div>
+      ) : (
+        <p>Loading user data...</p>
+      )}
+    </div>
+  )
+}
