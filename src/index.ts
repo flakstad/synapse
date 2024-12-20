@@ -7,21 +7,13 @@ import * as searchParamSync from './searchParamSync'
 import * as localStorageSync from './localStorageSync'
 import { createEventHandler, type EventHandler, type EventHandlers } from './createEventHandler'
 import { enableStoreAndEventDevTools } from './devTools'
+import { unpackEvent } from './utils'
 
 type SynapseConfig<S, E extends string> = {
   initializers: ((state: Partial<S>) => Partial<S>)[]
   eventHandler: EventItemHandler<E, Store<S>>
   listeners?: ((state: S) => void)[]
   enableDevTools?: boolean
-}
-
-function unpackEvent<E extends string>(event: EventItem<E>): DataEvent<E> {
-  if (Array.isArray(event)) {
-    const [type, payload] = event
-    return { type, payload }
-  } else {
-    return { type: event }
-  }
 }
 
 function synapse<S, E extends string>({
@@ -42,8 +34,7 @@ function synapse<S, E extends string>({
   const eventBus = new EventBus<E>()
 
   eventBus.setHandler((event: EventItem<E>, originalEvent?: Event | React.SyntheticEvent) => {
-    const dataEvent = unpackEvent(event)
-    eventHandler(store, dataEvent, originalEvent)
+    eventHandler(store, unpackEvent(event), originalEvent)
   })
 
   listeners.forEach((listener) => {
@@ -77,22 +68,22 @@ export {
   // Main synapse function and its types
   synapse,
   type SynapseConfig,
-  
+
   // Core types
   type Store,
   type EventItem,
   type DataEvent,
   type EventItemHandler,
   type EventPayload,
-  
+
   // Route handling
   type RouteEvents,
   useRouteEvents,
-  
+
   // Storage sync utilities
   searchParamSync,
   localStorageSync,
-  
+
   // Event handling
   createEventHandler,
   type EventHandler,
