@@ -1,4 +1,3 @@
-// synapse.ts
 import { EventBus } from './eventBus'
 import { Store } from './store'
 import { useStore } from './useStore'
@@ -8,11 +7,13 @@ import { createSubscription, Subscription, SubscriptionStatus } from './createSu
 import * as searchParamSync from './searchParamSync'
 import * as localStorageSync from './localStorageSync'
 import { createEventHandler, type EventHandler, type EventHandlers } from './createEventHandler'
+import { enableStoreAndEventDevTools } from './devTools'
 
 type SynapseConfig<S, E extends string> = {
   initialState: S
   eventHandler: EventItemHandler<E, Store<S>>
   listeners?: ((state: S) => void)[]
+  enableDevTools?: boolean
 }
 
 function unpackEvent<E extends string>(event: EventItem<E>): DataEvent<E> {
@@ -28,6 +29,7 @@ function synapse<S, E extends string>({
   initialState,
   eventHandler,
   listeners = [],
+  enableDevTools = true
 }: SynapseConfig<S, E>) {
   const urlState = searchParamSync.load()
   const localStorageState = localStorageSync.load()
@@ -41,7 +43,6 @@ function synapse<S, E extends string>({
     eventHandler(store, dataEvent, originalEvent)
   })
 
-  // Set up listeners
   listeners.forEach((listener) => {
     store.subscribe(() => {
       listener(store.get())
@@ -54,6 +55,10 @@ function synapse<S, E extends string>({
   ) => {
     const eventArray = Array.isArray(events) ? events : [events]
     eventBus.dispatch({ events: eventArray, originalEvent })
+  }
+
+  if (enableDevTools) {
+    enableStoreAndEventDevTools(dispatch, store)
   }
 
   return {

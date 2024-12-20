@@ -144,19 +144,4 @@ const routeEvents: RouteEvents<MyEventTypeValues> = {
   },
 }
 
-// Exposing dispatch and store to the window object, allowing inspection/interaction in the browser console.
-declare global {
-  interface Window {
-    Synapse: {
-      dispatch: typeof dispatch
-      store: typeof store
-    }
-  }
-}
-
-window.Synapse = {
-  dispatch,
-  store,
-}
-
 export { dispatch, useStore, useRouteEvents, routeEvents }
