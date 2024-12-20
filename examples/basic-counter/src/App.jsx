@@ -1,4 +1,4 @@
-import { useSynapse, emit } from './my_synapse'
+import { useSynapse, emit } from './synapseSetup'
 
 export default function App() {
   const state = useSynapse()
