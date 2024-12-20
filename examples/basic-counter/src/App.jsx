@@ -45,14 +45,14 @@ const Button = withSignalHandlers('button')
 
 export default function App() {
   const theme = useSynapseState(state => state['theme.mode'])
-  const currentPath = useSynapseState(state => state['navigation.path'])
+  const currentPath = useSynapseState(state => state['nav.path'])
   const count = useSynapseState(state => state['counter.value'])
   const profileName = useSynapseState(state => state['profile.name'])
   const profileLastActive = useSynapseState(state => state['profile.lastActive'])
 
   useEffect(() => {
     const handlePopState = () => {
-      useSignal()(['navigation.navigate', { path: window.location.pathname }])
+      useSignal()(['nav.to', { path: window.location.pathname }])
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
@@ -90,7 +90,7 @@ const Counter = ({ count }) => (
 const Navigation = ({ currentPath }) => (
   <div style={styles.tabs}>
     <Button
-      onClick={['navigation.navigate', { path: '/' }]}
+      onClick={['nav.to', { path: '/' }]}
       style={{
         ...styles.tab,
         ...(currentPath === '/' ? styles.activeTab : {}),
@@ -99,7 +99,7 @@ const Navigation = ({ currentPath }) => (
       Home
     </Button>
     <Button
-      onClick={['navigation.navigate', { path: '/counter' }]}
+      onClick={['nav.to', { path: '/counter' }]}
       style={{
         ...styles.tab,
         ...(currentPath === '/counter' ? styles.activeTab : {}),
@@ -108,7 +108,7 @@ const Navigation = ({ currentPath }) => (
       Counter
     </Button>
     <Button
-      onClick={['navigation.navigate', { path: '/profile' }]}
+      onClick={['nav.to', { path: '/profile' }]}
       style={{
         ...styles.tab,
         ...(currentPath === '/profile' ? styles.activeTab : {}),
@@ -129,7 +129,7 @@ const Home = ({ theme }) => (
       </Button>
     </div> 
     <div style={{ marginTop: '2rem' }}>
-      <Button onClick="system.reset" style={styles.button}>
+      <Button onClick="state.reset" style={styles.button}>
         Reset
       </Button>
     </div> 

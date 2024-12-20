@@ -4,22 +4,32 @@ import { createSynapseHooks } from '../../../src/react'
 const defaultInitialState = {
   'counter.value': 0,
   'theme.mode': 'light',
-  'navigation.path': "/",
+  'nav.path': "/",
   'profile.subscription': null,
   'profile.name': null,
   'profile.lastActive': null
 }
 
+// Suggested naming convention for signals and state keys:
+// nav.* for navigation-related actions
+// sys.* for system-level operations
+// state.* for state management operations
+// dom.* for DOM-related operations (e.g., dom.preventDefault, dom.scroll)
+// ui.* for UI-specific state (e.g., ui.loading, ui.modal)
+// app.* for application-level operations
+// evt.* for event-related operations
+// api.* for API-related operations
+
 export const synapseInstance = synapse({
   stateInitializers: [
     () => (defaultInitialState),
     () => localStorageSync.load(['counter.value', 'theme.mode', 'profile.name', 'profile.lastActive']),
-    () => searchParamSync.load(['counter.value', 'theme.mode', 'navigation.path']),      
+    () => searchParamSync.load(['counter.value', 'nav.path']),      
   ],
   stateListeners: [
     (state) => console.log('State updated:', state),
     (state) => localStorageSync.update(state, ['counter.value', 'theme.mode', 'profile.name', 'profile.lastActive']),       
-    (state) => searchParamSync.update(state, ['counter.value', 'theme.mode', 'navigation.path']),
+    (state) => searchParamSync.update(state, ['counter.value', 'nav.path']),
   ],
   signalProcessor: createSignalProcessor({
     'counter.increment': (state) => {
@@ -32,15 +42,15 @@ export const synapseInstance = synapse({
       const currentTheme = state.get()['theme.mode']
       state.merge({ 'theme.mode': currentTheme === 'light' ? 'dark' : 'light' })        
     },
-    'navigation.navigate': (state, { payload }) => {
+    'nav.to': (state, { payload }) => {
       const path = payload?.path || '/'
       window.history.pushState(null, '', path)
-      state.merge({ 'navigation.path': path })
+      state.merge({ 'nav.path': path })
     },
-    'system.log': (state, { payload }, event) => {
+    'sys.log': (state, { payload }, event) => {
       console.log(payload, event)
     },
-    'system.reset': (state) => {
+    'state.reset': (state) => {
       state.reset(defaultInitialState)
     },
     'profile.startSubscription': (state) => {
@@ -63,25 +73,25 @@ export const synapseInstance = synapse({
   enableDevTools: true,
   routeSignals: {
     '/': {
-      enter: [['system.log', { message: 'Entered home page' }]],
-      leave: [['system.log', { message: 'Left home page' }]]
+      enter: [['sys.log', { message: 'Entered home page' }]],
+      leave: [['sys.log', { message: 'Left home page' }]]
     },
     '/counter': {
-      enter: [['system.log', { message: 'Entered counter page' }]],
-      leave: [['system.log', { message: 'Left counter page' }]]
+      enter: [['sys.log', { message: 'Entered counter page' }]],
+      leave: [['sys.log', { message: 'Left counter page' }]]
     },
     '/profile': {
       enter: [
-        ['system.log', { message: 'Entered profile page, starting subscription' }],
+        ['sys.log', { message: 'Entered profile page, starting subscription' }],
         ['profile.startSubscription']
       ],
       leave: [
-        ['system.log', { message: 'Left profile page, stopping subscription' }],
+        ['sys.log', { message: 'Left profile page, stopping subscription' }],
         ['profile.stopSubscription'],        
       ]
     }
   },
-  pathSelector: (state) => state['navigation.path']
+  pathSelector: (state) => state['nav.path']
 })
 
 // Export hooks for convenience
