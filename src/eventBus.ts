@@ -1,0 +1,27 @@
+// eventBus.ts
+import { EventItem, EventData } from './types'
+
+export class EventBus<E extends string> {
+  private handler:
+    | ((event: EventItem<E>, originalEvent?: Event | React.SyntheticEvent) => void)
+    | null = null
+
+  setHandler(handler: (event: EventItem<E>, originalEvent?: Event | React.SyntheticEvent) => void) {
+    this.handler = handler
+  }
+
+  dispatch(data: EventData<E>) {
+    if (this.handler) {
+      data.events.forEach((event) => {
+        if (this.handler) {
+          // eslint-disable-next-line no-console
+          console.log('Dispatching event', event, data.originalEvent)
+          this.handler(event, data.originalEvent)
+        }
+      })
+    } else {
+      // eslint-disable-next-line no-console
+      console.warn('No handler set for EventBus')
+    }
+  }
+}
