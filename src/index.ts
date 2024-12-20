@@ -10,7 +10,7 @@ import { createEventHandler, type EventHandler, type EventHandlers } from './cre
 import { enableStoreAndEventDevTools } from './devTools'
 
 type SynapseConfig<S, E extends string> = {
-  initialState: S
+  initializers: ((state: Partial<S>) => Partial<S>)[]
   eventHandler: EventItemHandler<E, Store<S>>
   listeners?: ((state: S) => void)[]
   enableDevTools?: boolean
@@ -26,16 +26,20 @@ function unpackEvent<E extends string>(event: EventItem<E>): DataEvent<E> {
 }
 
 function synapse<S, E extends string>({
-  initialState,
+  initializers,
   eventHandler,
   listeners = [],
   enableDevTools = true
 }: SynapseConfig<S, E>) {
-  const urlState = searchParamSync.load()
-  const localStorageState = localStorageSync.load()
-  const mergedInitialState = { ...initialState, ...localStorageState, ...urlState } as S
+  const initialState = initializers.reduce(
+    (state, initializer) => ({
+      ...state,
+      ...initializer(state)
+    }),
+    {} as Partial<S>
+  ) as S
 
-  const store = new Store<S>(mergedInitialState)
+  const store = new Store<S>(initialState)
   const eventBus = new EventBus<E>()
 
   eventBus.setHandler((event: EventItem<E>, originalEvent?: Event | React.SyntheticEvent) => {
@@ -100,7 +104,3 @@ export {
   type EventHandler,
   type EventHandlers,
 }
-
-// TODO: event handler should take actions and call an actions handler that computes the store updates and side effects. The event handler then updates the store and performs effects.
-// TODO: storage layer should have sync to localStorage/indexedDB. Define keys which should be persisted.
-// TODO: typed store, or fully dynamic?

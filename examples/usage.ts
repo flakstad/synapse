@@ -122,12 +122,16 @@ const eventHandlers: EventHandlers<AppState, MyEventTypeValues> = {
 
 // Create the Synapse instance
 const { dispatch, store, useStore, useRouteEvents } = synapse({
-  initialState,
-  eventHandler: createEventHandler<AppState, MyEventTypeValues>(eventHandlers),
-  listeners: [
-    (state) => searchParamSync.update(state),
-    (state) => localStorageSync.update(state)
+  initializers: [
+    () => initialState,                          // Base initial state
+    () => searchParamSync.load(),                // Load from URL
+    () => localStorageSync.load()                // Load from localStorage
   ],
+  eventHandler: createEventHandler(eventHandlers),
+  listeners: [
+    (state) => searchParamSync.update(state),    // Sync changes to URL
+    (state) => localStorageSync.update(state)    // Sync changes to localStorage
+  ]
 })
 
 // Defining route events  - events that will be dispatched on routes
