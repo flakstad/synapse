@@ -13,7 +13,7 @@ export class EventBus<E extends string> {
     if (this.handler) {
       data.signals.forEach((signal) => {
         if (this.handler) {
-          console.log('Dispatching signal', signal, data.event)
+          //console.log('Dispatching signal', signal, data.event)
           this.handler(signal, data.event)
         }
       })

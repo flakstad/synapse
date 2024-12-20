@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { State } from './state'
 
-export function useSynapseState<T>(store: State<T>): T {
-  const [state, setState] = useState(store.get())
+export function useSynapseState<T>(state: State<T>): T {
+  const [internalState, setInternalState] = useState(state.get())
 
   useEffect(() => {
-    return store.subscribe(() => {
-      setState(store.get())
+    return state.subscribe(() => {
+      setInternalState(state.get())
     })
-  }, [store])
+  }, [state])
 
-  return state
+  return internalState
 }

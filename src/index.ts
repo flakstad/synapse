@@ -7,19 +7,23 @@ import * as searchParamSync from './searchParamSync'
 import * as localStorageSync from './localStorageSync'
 import { enableStoreAndEventDevTools } from './devTools'
 import { unpackEvent } from './utils'
+import { useRef } from 'react'
+import { match } from 'path-to-regexp'
 
 type SynapseConfig<S, E extends string> = {
   initializers: ((state: Partial<S>) => Partial<S>)[]
   signalProcessor: SignalProcessor<E, State<S>>
   listeners?: ((state: S) => void)[]
   enableDevTools?: boolean
+  routeSignals?: RouteSignals<E>
 }
 
 function synapse<S, E extends string>({
   initializers,
   signalProcessor,
   listeners = [],
-  enableDevTools = true
+  enableDevTools = true,
+  routeSignals
 }: SynapseConfig<S, E>) {
   const initialState = initializers.reduce(
     (state, initializer) => ({
@@ -29,16 +33,16 @@ function synapse<S, E extends string>({
     {} as Partial<S>
   ) as S
 
-  const synapse = new State<S>(initialState)
+  const synapseState = new State<S>(initialState)
   const eventBus = new EventBus<E>()
 
   eventBus.setHandler((event: SignalItem<E>, originalEvent?: Event | React.SyntheticEvent) => {
-    signalProcessor(synapse, unpackEvent(event), originalEvent)
+    signalProcessor(synapseState, unpackEvent(event), originalEvent)
   })
 
   listeners.forEach((listener) => {
-    synapse.subscribe(() => {
-      listener(synapse.get())
+    synapseState.subscribe(() => {
+      listener(synapseState.get())
     })
   })
 
@@ -51,15 +55,26 @@ function synapse<S, E extends string>({
   }
 
   if (enableDevTools) {
-    enableStoreAndEventDevTools(emit, synapse)
+    enableStoreAndEventDevTools(emit, synapseState)
   }
 
-  return {
-    emit,
-    synapse,
-    useSynapse: () => useSynapseState(synapse),
-    useRouteSignals,
+  return { synapseState, emit }
+}
+
+function useSynapse<S, E extends string>(config: SynapseConfig<S, E>) {
+  const synapseRef = useRef<ReturnType<typeof synapse<S, E>> | null>(null)
+  
+  if (!synapseRef.current) {
+    synapseRef.current = synapse(config)
   }
+  
+  const state = useSynapseState(synapseRef.current.synapseState)
+  
+  if (config.routeSignals) {
+    useRouteSignals(config.routeSignals, synapseRef.current.emit)
+  }
+  
+  return { state, emit: synapseRef.current.emit }
 }
 
 function createSignalProcessor<S, T extends string>(
@@ -96,4 +111,7 @@ export {
   type DataSignal,
   type SignalProcessor,
   type SignalPayload,
+
+  // New hook that handles both initialization and state management
+  useSynapse,
 }
