@@ -1,12 +1,7 @@
-import { AppState } from '../examples/usage'
 import { getNestedValue, setNestedValue } from './utils'
 
-export type LocalStorageSyncedState = {
-  [K in string]: any
-}
-
-export function load(syncedFields: string[]): Partial<AppState> {
-  const initialState: Partial<AppState> = {}
+export function load<S>(syncedFields: string[]): Partial<S> {
+  const initialState: Partial<S> = {}
 
   syncedFields.forEach((field) => {
     const value = localStorage.getItem(field)
@@ -23,7 +18,7 @@ export function load(syncedFields: string[]): Partial<AppState> {
   return initialState
 }
 
-export function update(state: AppState, syncedFields: string[]) {
+export function update<S>(state: S, syncedFields: string[]) {
   syncedFields.forEach((field) => {
     const value = getNestedValue(state, field)
     if (value !== undefined && value !== null) {

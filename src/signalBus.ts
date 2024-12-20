@@ -2,10 +2,10 @@ import { SignalItem, SignalData } from './types'
 
 export class SignalBus<E extends string> {
   private handler:
-    | ((signal: SignalItem<E>, event?: Event | React.SyntheticEvent) => void)
+    | ((signal: SignalItem<E>, event?: Event) => void)
     | null = null
 
-  setHandler(handler: (signal: SignalItem<E>, event?: Event | React.SyntheticEvent) => void) {
+  setHandler(handler: (signal: SignalItem<E>, event?: Event) => void) {
     this.handler = handler
   }
 

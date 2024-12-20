@@ -4,21 +4,26 @@ import { useEffect, useState } from 'react'
 const defaultInitialState = {
   count: 0,
   theme: 'light',
-  currentPath: window.location.pathname
+  currentPath: "/"
 }
 
-const { emit, synapseState } = synapse({
-  initializers: [
+const { emit, state: synapseState } = synapse({
+  stateInitializers: [
     () => (defaultInitialState),
     () => localStorageSync.load(['count', 'theme']),
-    () => searchParamSync.load(['count', 'theme']),      
+    () => searchParamSync.load(['count', 'theme', 'currentPath']),      
+  ],
+  stateListeners: [
+    (state) => console.log('State updated:', state),
+    (state) => searchParamSync.update(state, ['count', 'theme', 'currentPath']),
+    (state) => localStorageSync.update(state, ['count', 'theme']),       
   ],
   signalProcessor: createSignalProcessor({
     INCREMENT: (state) => {
       state.merge({ count: Number(state.get().count) + 1 })
     },
     DECREMENT: (state) => {
-      state.merge({ count: Number(state.get().count) - 1 })
+      state.swap(val => ({ ...val, count: Number(val.count) - 1 }))
     },
     TOGGLE_THEME: (state) => {
       const currentTheme = state.get().theme
@@ -32,12 +37,10 @@ const { emit, synapseState } = synapse({
     CONSOLE_LOG: (state, { payload }, event) => {
       console.log(payload, event)
     },
-  }),
-  stateListeners: [
-    (state) => console.log('State updated:', state),
-    (state) => searchParamSync.update(state, ['count', 'theme']),
-    (state) => localStorageSync.update(state, ['count', 'theme']),       
-  ],
+    CLEAR: (state) => {
+      state.reset(defaultInitialState)
+    },
+  }),  
   enableDevTools: true,
   routeSignals: {
     '/': {
@@ -130,6 +133,11 @@ export default function App() {
             <div style={{ marginTop: '2rem' }}>
               <button style={styles.button} onClick={() => emit('TOGGLE_THEME')}>
                 Toggle Theme ({state.theme})
+              </button>
+            </div> 
+            <div style={{ marginTop: '2rem' }}>
+              <button style={styles.button} onClick={() => emit('CLEAR')}>
+                Reset
               </button>
             </div> 
           </div>

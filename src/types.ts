@@ -11,17 +11,24 @@ export type DataSignal<T extends string> = {
 
 export type SignalData<T extends string> = {
   signals: SignalItem<T>[]
-  event?: Event | React.SyntheticEvent
+  event?: Event
 }
 
 export type SignalProcessor<T extends string, S> = (
   state: S,
   signal: DataSignal<T>,
-  event?: Event | React.SyntheticEvent,
+  event?: Event,
 ) => void
-
-export type SignalHandler<T extends string> = (data: SignalData<T>) => void
 
 export type SignalHandlers<T extends string, S> = {
   [K in T]: SignalProcessor<T, S>
+}
+
+type RouteSignalConfig<E extends string> = {
+  enter?: SignalItem<E>[]
+  leave?: SignalItem<E>[]
+}
+
+export type RouteSignals<E extends string> = {
+  [path: string]: RouteSignalConfig<E>
 }

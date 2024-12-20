@@ -1,13 +1,8 @@
-import { AppState } from '../examples/usage'
 import { getNestedValue, setNestedValue } from './utils'
 
-export type SearchParamSync = {
-  [K in string]: any
-}
-
-export function load(syncedFields: string[]): Partial<AppState> {
+export function load<S>(syncedFields: string[]): Partial<S> {
   const searchParams = new URLSearchParams(window.location.search)
-  const initialState: Partial<AppState> = {}
+  const initialState: Partial<S> = {}
 
   syncedFields.forEach((field) => {
     const value = searchParams.get(field)
@@ -19,7 +14,7 @@ export function load(syncedFields: string[]): Partial<AppState> {
   return initialState
 }
 
-export function update(state: AppState, syncedFields: string[]) {
+export function update<S>(state: S, syncedFields: string[]) {
   const searchParams = new URLSearchParams(window.location.search)
   syncedFields.forEach((field) => {
     const value = getNestedValue(state, field)
