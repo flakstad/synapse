@@ -12,7 +12,7 @@ import { useRef } from 'react'
 type SynapseConfig<S, E extends string> = {
   initializers: ((state: Partial<S>) => Partial<S>)[]
   signalProcessor: SignalProcessor<E, State<S>>
-  listeners?: ((state: S) => void)[]
+  stateListeners?: ((state: S) => void)[]
   enableDevTools?: boolean
   routeSignals?: RouteSignals<E>
 }
@@ -20,7 +20,7 @@ type SynapseConfig<S, E extends string> = {
 function synapse<S, E extends string>({
   initializers,
   signalProcessor,
-  listeners = [],
+  stateListeners = [],
   enableDevTools = true,
   routeSignals
 }: SynapseConfig<S, E>) {
@@ -39,7 +39,7 @@ function synapse<S, E extends string>({
     signalProcessor(synapseState, unpack(signal), event)
   })
 
-  listeners.forEach((listener) => {
+  stateListeners.forEach((listener) => {
     synapseState.subscribe(() => {
       listener(synapseState.get())
     })

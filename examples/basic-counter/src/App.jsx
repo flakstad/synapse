@@ -33,11 +33,11 @@ export default function App() {
         console.log(payload, event)
       },
     }),
-    listeners: [
+    stateListeners: [
+      (state) => console.log('State updated:', state),
       // Sync state changes back to URL and localStorage
       (state) => searchParamSync.update(state, ['count', 'theme']),
-      (state) => localStorageSync.update(state, ['count', 'theme']),
-      (state) => console.log('State updated:', state)    
+      (state) => localStorageSync.update(state, ['count', 'theme']),       
     ],
     routeSignals: {
       '/': {
