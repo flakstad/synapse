@@ -1,11 +1,12 @@
 import { 
   synapse,
-  EventHandlers,
-  createEventHandler,
-  RouteEvents,
+  RouteSignals,
   searchParamSync,
-  localStorageSync
+  localStorageSync,
+  createSignalProcessor,
+  type State,
 } from '../src/index'
+import { SignalHandlers } from '../src/types';
 
 // Define Subscription type
 interface Subscription<T> {
@@ -50,7 +51,7 @@ const initialState: AppState = {
 }
 
 // Define event types
-const EventType = {
+const SignalTypes = {
   PreventDefault: 'prevent_default',
   StopPropagation: 'stop_propagation',
   Focus: 'focus',
@@ -61,7 +62,7 @@ const EventType = {
   UnsubscribeCollection: 'unsubscribe_collection',
 } as const
 
-type MyEventTypeValues = (typeof EventType)[keyof typeof EventType]
+type MySignalTypeValues = (typeof SignalTypes)[keyof typeof SignalTypes]
 
 const subscriptions: { [key: string]: Subscription<any> } = {}
 
@@ -85,30 +86,30 @@ const searchQuery = (q: string): Promise<any> => {
   });
 };
 
-const eventHandlers: EventHandlers<AppState, MyEventTypeValues> = {
-  prevent_default: (store, dataEvent, originalEvent) => originalEvent?.preventDefault(),
-  stop_propagation: (store, dataEvent, originalEvent) => originalEvent?.stopPropagation(),
-  console_log: (store, dataEvent) => console.log(dataEvent.payload),
-  focus: (store, dataEvent, originalEvent) => {
+const signalHandlers: SignalHandlers<MySignalTypeValues, State<AppState>> = {
+  prevent_default: (state, signal, originalEvent) => originalEvent?.preventDefault(),
+  stop_propagation: (state, signal, originalEvent) => originalEvent?.stopPropagation(),
+  console_log: (state, signal) => console.log(signal.payload),
+  focus: (state, signal, originalEvent) => {
     if (originalEvent?.target instanceof HTMLElement) {
       originalEvent.target.focus()
     }
   },
-  update_store: (store, dataEvent) => {
-    store.merge(dataEvent.payload || {})
+  update_store: (state, dataEvent) => {
+    state.merge(dataEvent.payload || {})
   },
-  search: (store, dataEvent) => {
+  search: (state, dataEvent) => {
     const { q } = dataEvent.payload || {}
-    store.merge({ search: { q, a: undefined, loading: true } })
+    state.merge({ search: { q, a: undefined, loading: true } })
     searchQuery(q)
       .then((json) => {
-        store.merge({ search: { q, a: json, loading: false } })
+        state.merge({ search: { q, a: json, loading: false } })
       })
       .catch((error) => {
-        store.merge({ search: { q, loading: false, error: error } })
+        state.merge({ search: { q, loading: false, error: error } })
       })
   },
-  subscribe_collection: (store, dataEvent) => {
+  subscribe_collection: (state, dataEvent) => {
     const { collection, params } = dataEvent.payload
     const { workspaceId } = params
     console.log('handling event', 'subscribe_collection', dataEvent.payload)
@@ -128,14 +129,14 @@ const eventHandlers: EventHandlers<AppState, MyEventTypeValues> = {
     subscriptions[collection] = createSubscription(
       query,
       (data) => {
-        store.merge({ [collection]: data })
+        state.merge({ [collection]: data })
       },
       (error) => {
         console.error(`Error in ${collection} subscription:`, error)
       },
     )
   },
-  unsubscribe_collection: (store, dataEvent) => {
+  unsubscribe_collection: (state, dataEvent) => {
     const { collection } = dataEvent.payload
     console.log('handling event', 'unsubscribe_collection', dataEvent.payload)
     if (subscriptions[collection]) {
@@ -149,21 +150,21 @@ const localStorageSyncedFields = ['assets']
 const searchParamsSyncedFields = ['search.q']
 
 // Create the Synapse instance
-const { dispatch, store, useStore, useRouteEvents } = synapse({
+const { emit, useSynapse, useRouteSignals } = synapse({
   initializers: [
     () => initialState,                          
     () => searchParamSync.load(searchParamsSyncedFields),                
     () => localStorageSync.load(localStorageSyncedFields)
   ],
-  eventHandler: createEventHandler(eventHandlers),
+  signalProcessor: createSignalProcessor(signalHandlers),
   listeners: [
     (state) => searchParamSync.update(state, searchParamsSyncedFields),    
     (state) => localStorageSync.update(state, localStorageSyncedFields)
   ]
 })
 
-// Defining route events  - events that will be dispatched on routes
-const routeEvents: RouteEvents<MyEventTypeValues> = {
+// Defining route signals  - signals that will be emitted on entering and leaving routes
+const routeSignals: RouteSignals<MySignalTypeValues> = {
   '/:workspaceId/search': {
     enter: [
       ['console_log', { text: 'Entered search!' }],
@@ -176,4 +177,4 @@ const routeEvents: RouteEvents<MyEventTypeValues> = {
   },
 }
 
-export { dispatch, useStore, useRouteEvents, routeEvents }
+export { emit, useSynapse, useRouteSignals, routeSignals }

@@ -1,4 +1,4 @@
-import { DataEvent, EventItem } from "./types"
+import { DataSignal, SignalItem } from "./types"
 
 export function getNestedValue(obj: any, path: string): any {
   return path.split('.').reduce((acc, part) => acc && acc[part], obj)
@@ -13,7 +13,7 @@ export function setNestedValue(obj: any, path: string, value: any) {
   }
 }
 
-export function unpackEvent<E extends string>(event: EventItem<E>): DataEvent<E> {
+export function unpackEvent<E extends string>(event: SignalItem<E>): DataSignal<E> {
   if (Array.isArray(event)) {
     const [type, payload] = event
     return { type, payload }

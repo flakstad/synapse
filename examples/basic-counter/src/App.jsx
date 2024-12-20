@@ -1,7 +1,7 @@
-import { useStore, dispatch } from './store'
+import { useSynapse, emit } from './my_synapse'
 
 export default function App() {
-  const state = useStore()
+  const state = useSynapse()
   
   const styles = {
     container: {
@@ -27,13 +27,13 @@ export default function App() {
         <h2>Count: {state.count}</h2>
         <button 
           style={styles.button}
-          onClick={() => dispatch('INCREMENT')}
+          onClick={() => emit('INCREMENT')}
         >
           Increment
         </button>
         <button 
           style={styles.button}
-          onClick={() => dispatch('DECREMENT')}
+          onClick={() => emit('DECREMENT')}
         >
           Decrement
         </button>
@@ -42,7 +42,7 @@ export default function App() {
       <div style={{ marginTop: '2rem' }}>
         <button 
           style={styles.button}
-          onClick={() => dispatch('TOGGLE_THEME')}
+          onClick={() => emit('TOGGLE_THEME')}
         >
           Toggle Theme ({state.theme})
         </button>

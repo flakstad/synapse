@@ -1,4 +1,4 @@
-export class Store<T> {
+export class State<T> {
   private state: T
   private listeners: (() => void)[] = []
 

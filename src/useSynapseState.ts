@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Store } from './store'
+import { State } from './state'
 
-export function useStore<T>(store: Store<T>): T {
+export function useSynapseState<T>(store: State<T>): T {
   const [state, setState] = useState(store.get())
 
   useEffect(() => {

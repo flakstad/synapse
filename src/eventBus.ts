@@ -1,20 +1,20 @@
-import { EventItem, EventData } from './types'
+import { SignalItem, SignalData } from './types'
 
 export class EventBus<E extends string> {
   private handler:
-    | ((event: EventItem<E>, originalEvent?: Event | React.SyntheticEvent) => void)
+    | ((signal: SignalItem<E>, event?: Event | React.SyntheticEvent) => void)
     | null = null
 
-  setHandler(handler: (event: EventItem<E>, originalEvent?: Event | React.SyntheticEvent) => void) {
+  setHandler(handler: (signal: SignalItem<E>, event?: Event | React.SyntheticEvent) => void) {
     this.handler = handler
   }
 
-  dispatch(data: EventData<E>) {
+  dispatch(data: SignalData<E>) {
     if (this.handler) {
-      data.events.forEach((event) => {
+      data.signals.forEach((signal) => {
         if (this.handler) {
-          console.log('Dispatching event', event, data.originalEvent)
-          this.handler(event, data.originalEvent)
+          console.log('Dispatching signal', signal, data.event)
+          this.handler(signal, data.event)
         }
       })
     } else {
