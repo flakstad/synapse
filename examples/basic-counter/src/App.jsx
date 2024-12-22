@@ -91,11 +91,14 @@ const Counter = ({ count }) => {
   return (
     <div>
       <h2>Count: {count}</h2>
-      <Button onClick="counter.increment" style={styles.button}>
+      <Button onClick="counter.increment" onMouseOver={['sys.log', { message: 'Increment button hovered' }]} style={styles.button}>
         Increment
       </Button>
       <Button onClick="counter.decrement" style={styles.button}>
         Decrement
+      </Button>
+      <Button onClick={() => console.log('Test')} style={styles.button}>
+        Test
       </Button>
     </div>
   )

@@ -1,5 +1,5 @@
 /** @jsx React.createElement */
-import { useEffect, useState, ComponentType, createElement, useRef } from 'react'
+import { useEffect, useState, ComponentType, createElement, useRef, forwardRef, ForwardRefExoticComponent, RefAttributes } from 'react'
 import type { State } from './state'
 import type { SignalItem, SignalTuple } from './types'
 
@@ -13,7 +13,7 @@ type WithSignalProps<P, E extends string> = {
 
 type SignalHandlerHOC = <P extends {}, E extends string>(
   WrappedComponent: ComponentType<P> | string
-) => ComponentType<WithSignalProps<P, E>>
+) => ForwardRefExoticComponent<WithSignalProps<P, E>>
 
 export function createSynapseHooks<S, E extends string>(synapse: { 
   state: State<S>, 
@@ -21,7 +21,7 @@ export function createSynapseHooks<S, E extends string>(synapse: {
   select?: (key: string) => any 
 }) {
   const withSignalHandlers: SignalHandlerHOC = (WrappedComponent) => {
-    return function SignalHandler(props) {
+    return forwardRef<any, WithSignalProps<any, E>>(function SignalHandler(props, ref) {
       const emit = synapse.emit
       const processedProps = Object.entries(props).reduce((acc, [key, value]) => {
         if (key.startsWith('on') && (Array.isArray(value) || typeof value === 'string')) {
@@ -32,8 +32,8 @@ export function createSynapseHooks<S, E extends string>(synapse: {
         return acc
       }, {} as Record<string, any>)
 
-      return createElement(WrappedComponent as any, processedProps)
-    }
+      return createElement(WrappedComponent as any, { ...processedProps, ref })
+    })
   }
 
   const isEqual = (a: any, b: any): boolean => {
