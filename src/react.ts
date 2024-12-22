@@ -11,31 +11,33 @@ type WithSignalProps<P, E extends string> = {
     : P[K]
 }
 
-type SignalHandlerHOC = <P extends {}, E extends string>(
-  WrappedComponent: ComponentType<P> | string
-) => ForwardRefExoticComponent<WithSignalProps<P, E>>
+export type SignalEmitter<E extends string> = 
+  (signals: SignalItem<E>[] | SignalItem<E>, event?: Event) => void
 
+export function withSignalHandlers<E extends string>(
+  WrappedComponent: ComponentType<any> | string,
+  emit: SignalEmitter<E>
+) {
+  return forwardRef<any, WithSignalProps<any, E>>(function SignalHandler(props, ref) {
+    const processedProps = Object.entries(props).reduce((acc, [key, value]) => {
+      if (key.startsWith('on') && (Array.isArray(value) || typeof value === 'string')) {
+        acc[key] = (event: Event) => emit(value as SignalHandler<E>, event)
+      } else {
+        acc[key] = value
+      }
+      return acc
+    }, {} as Record<string, any>)
+
+    return createElement(WrappedComponent as any, { ...processedProps, ref })
+  })
+}
+
+// Synapse-specific hooks creator
 export function createSynapseHooks<S, E extends string>(synapse: { 
   state: State<S>, 
-  emit: (signals: SignalItem<E>[] | SignalItem<E>, event?: Event) => void,
+  emit: SignalEmitter<E>,
   select?: (key: string) => any 
 }) {
-  const withSignalHandlers: SignalHandlerHOC = (WrappedComponent) => {
-    return forwardRef<any, WithSignalProps<any, E>>(function SignalHandler(props, ref) {
-      const emit = synapse.emit
-      const processedProps = Object.entries(props).reduce((acc, [key, value]) => {
-        if (key.startsWith('on') && (Array.isArray(value) || typeof value === 'string')) {
-          acc[key] = (event: Event) => emit(value as SignalHandler<E>, event)
-        } else {
-          acc[key] = value
-        }
-        return acc
-      }, {} as Record<string, any>)
-
-      return createElement(WrappedComponent as any, { ...processedProps, ref })
-    })
-  }
-
   const isEqual = (a: any, b: any): boolean => {
     if (a === b) return true;
     if (typeof a !== 'object' || typeof b !== 'object') return false;
@@ -90,7 +92,6 @@ export function createSynapseHooks<S, E extends string>(synapse: {
       }, [])
 
       return value
-    },
-    withSignalHandlers
+    }
   }
 }

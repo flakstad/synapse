@@ -1,5 +1,5 @@
 import { synapse, createSignalProcessor, searchParamSync, localStorageSync } from '../../../src/index'
-import { createSynapseHooks } from '../../../src/react'
+import { createSynapseHooks, withSignalHandlers } from '../../../src/react'
 
 const defaultInitialState = {
   'counter.value': 0,
@@ -94,5 +94,6 @@ export const synapseInstance = synapse({
   pathSelector: (state) => state['nav.path']
 })
 
-// Export hooks for convenience
-export const { useSynapseState, useSignal, withSignalHandlers } = createSynapseHooks(synapseInstance)
+// Export hooks and HOC
+export { withSignalHandlers }
+export const { useSynapseState, useSignal } = createSynapseHooks(synapseInstance)
