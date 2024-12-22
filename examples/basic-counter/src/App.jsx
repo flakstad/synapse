@@ -15,7 +15,7 @@ const Container = ({ children }) => {
   )
 }
 
-export default function App() {
+export default function $App() {
   const currentPath = useSynapseState(state => state['nav.path'])
 
   useEffect(() => {

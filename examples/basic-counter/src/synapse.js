@@ -1,5 +1,6 @@
 import { synapse, createSignalProcessor, searchParamSync, localStorageSync } from '../../../src/index'
 import { createSynapseHooks, withSignalHandlers } from '../../../src/react'
+import { counterSignals } from './components/Counter'
 
 const defaultInitialState = {
   'counter.value': 0,
@@ -32,12 +33,7 @@ export const synapseInstance = synapse({
     (state) => searchParamSync.update(state, ['counter.value']),
   ],
   signalProcessor: createSignalProcessor({
-    'counter.increment': (state) => {
-      state.merge({ 'counter.value': Number(state.get()['counter.value']) + 1 })
-    },
-    'counter.decrement': (state) => {
-      state.merge({ 'counter.value': Number(state.get()['counter.value']) - 1 })
-    },
+    ...counterSignals,
     'theme.toggle': (state) => {
       const currentTheme = state.get()['theme.mode']
       state.merge({ 'theme.mode': currentTheme === 'light' ? 'dark' : 'light' })        

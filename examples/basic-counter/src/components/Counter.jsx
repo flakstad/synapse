@@ -2,6 +2,15 @@ import { useSynapseState } from '../synapse'
 import { Button } from './Button'
 import { styles } from '../styles'
 
+export const counterSignals = {
+  'counter.increment': (state) => {
+    state.merge({ 'counter.value': Number(state.get()['counter.value']) + 1 })
+  },
+  'counter.decrement': (state) => {
+    state.merge({ 'counter.value': Number(state.get()['counter.value']) - 1 })
+  }
+}
+
 export function Counter({ count, onIncrement, onDecrement }) {
   return (
     <div>
@@ -26,4 +35,4 @@ export function $Counter() {
       onDecrement="counter.decrement"
     />
   )
-} 
+}
