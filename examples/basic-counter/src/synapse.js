@@ -4,7 +4,7 @@ import { createSynapseHooks, withSignalHandlers } from '../../../src/react'
 const defaultInitialState = {
   'counter.value': 0,
   'theme.mode': 'light',
-  'nav.path': "/",
+  'nav.path': window.location.pathname,
   'profile.subscription': null,
   'profile.name': null,
   'profile.lastActive': null
@@ -24,12 +24,12 @@ export const synapseInstance = synapse({
   stateInitializers: [
     () => (defaultInitialState),
     () => localStorageSync.load(['counter.value', 'theme.mode', 'profile.name', 'profile.lastActive']),
-    () => searchParamSync.load(['counter.value', 'nav.path']),      
+    () => searchParamSync.load(['counter.value']),      
   ],
   stateListeners: [
     //(state) => console.log('State updated:', state),
     (state) => localStorageSync.update(state, ['counter.value', 'theme.mode', 'profile.name', 'profile.lastActive']),       
-    (state) => searchParamSync.update(state, ['counter.value', 'nav.path']),
+    (state) => searchParamSync.update(state, ['counter.value']),
   ],
   signalProcessor: createSignalProcessor({
     'counter.increment': (state) => {
