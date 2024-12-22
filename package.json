@@ -5,6 +5,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "watch": "tsc --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -13,7 +16,16 @@
   "dependencies": {
     "path-to-regexp": "^6.3.0"
   },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
   "devDependencies": {
+    "@types/react": "^18.2.0",
+    "react": "^18.2.0",
     "typescript": "^5.7.2"
-  }
+  },
+  "files": [
+    "dist",
+    "src"
+  ]
 }
